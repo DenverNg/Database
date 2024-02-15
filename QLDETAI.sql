@@ -281,7 +281,7 @@ SET TRUONGKHOA='007' WHERE MAKHOA='HH'
 UPDATE KHOA
 SET TRUONGKHOA='004' WHERE MAKHOA='SH'
 UPDATE KHOA
-SET TRUONGKHOA='009' WHERE MAKHOA='VL'
+SET TRUONGKHOA='005' WHERE MAKHOA='VL'
 
 UPDATE BOMON
 SET TRUONGBM='007' WHERE MABM='HPT'
@@ -289,6 +289,10 @@ UPDATE BOMON
 SET TRUONGBM='002' WHERE MABM='HTTT'
 UPDATE BOMON
 SET TRUONGBM='001' WHERE MABM='MMT'
+UPDATE BOMON 
+SET TRUONGBM='005'WHERE MABM='VLƯD'
+UPDATE BOMON 
+SET TRUONGBM='004'WHERE MABM='VS'
 
 INSERT GV_DT
 VALUES
@@ -313,7 +317,7 @@ VALUES
     ('001', N'HTTT quản lý các trường ĐH', 'ĐHQG', '20.0', '10/20/2007', '10/20/2008', 'QLGD', '002'),
     ('002', N'HTTT quản lý giáo vụ cho một Khoa', N'Trường', '20.0', '10/12/2000', '10/12/2001', 'QLGD', '002'),
     ('003', N'Nghiên cứu chế tạo sợi Nanô Platin', 'ĐHQG', '300.0', '05/15/2008', '05/15/2010', 'NCPT', '005'),
-    ('004', N'Tạo vật liệu sinh học bằng màng ối người', N'Nhà nước', '100.0', '01/01/2003', '12/31/2008', 'NCPT', '004'),
+    ('004', N'Tạo vật liệu sinh học bằng màng ối người', N'Nhà nước', '100.0', '01/01/2007', '12/31/2009', 'NCPT', '004'),
     ('005', N'Ứng dụng hóa học xanh', N'Trường', '200.0', '10/10/2003', '12/10/2004', 'ƯDCN', '007'),
     ('006', N'Nghiên cứu tế bào gốc', N'Nhà nước', '4000.0', '10/20/2006', '10/20/2009', 'NCPT', '004'),
     ('007', N'HTTT quản lý thư viện ở các trường ĐH', N'Trường', '20.0', '05/10/2009', '05/10/2010', 'QLGD', '001')
