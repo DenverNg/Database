@@ -1,39 +1,16 @@
 USE  QLDETAI
 GO
 
---Q1
-SELECT GV.HOTEN, GV.LUONG
-FROM GIAOVIEN GV
-WHERE GV.PHAI = N'NỮ'
-
---Q2
-SELECT GV.HOTEN, GV.LUONG*1.1 [LUONG TANG 10%]
-FROM GIAOVIEN GV
-
---Q3 
-SELECT DISTINCT GV.MAGV
-FROM GIAOVIEN GV, BOMON BM
-WHERE (YEAR(BM.NGAYNHANCHUC) > 1995 AND BM.TRUONGBM=GV.MAGV) OR ((GV.HOTEN LIKE N'NGUYỄN %' AND GV.LUONG > 2000))
---Q4
-SELECT GV.HOTEN
-FROM GIAOVIEN GV JOIN BOMON BM ON GV.MABM = BM.MABM
-    JOIN KHOA K ON BM.MAKHOA = K.MAKHOA
-WHERE K.TENKHOA = N'Công nghệ thông tin'
-
---Q5
-SELECT *
-FROM BOMON BM JOIN GIAOVIEN GV ON BM.TRUONGBM = GV.MAGV
-
 --Q6. Với mỗi giáo viên, hãy cho biết thông tin bộ môn mà họ đang làm việc
 SELECT GV.*, BM.*
 FROM BOMON BM JOIN GIAOVIEN GV ON BM.MABM = GV.MABM
 
 --Q7. Cho biết tên đề tài và giáo viên chủ nhiệm đề tài
-SELECT DT.TENDT, GV.HOTEN
+SELECT DT.TENDT, GV.*
 FROM DETAI DT JOIN GIAOVIEN GV ON DT.GVCNDT = GV.MAGV
 
 --Q8. Với mỗi khoa, cho biết thông tin trường khoa
-SELECT GV.*
+SELECT K.MAKHOA,K.TENKHOA, GV.*
 FROM KHOA K JOIN GIAOVIEN GV ON GV.MAGV=K.TRUONGKHOA
 
 --Q9. Cho biết các giáo viên của bộ môn "Vi sinh" có tham gia đề tài 006
@@ -75,7 +52,7 @@ FROM DETAI DT JOIN CONGVIEC CV ON DT.MADT = CV.MADT
 WHERE DT.TENDT = N'HTTT quản lý các trường ĐH' AND ( CV.NGAYBD BETWEEN '03/01/2008' AND '03/31/2008')
 
 --Q16. Cho biết tên giáo viên và tên người quản lý chuyên môn của giáo viên đó
-SELECT GV.HOTEN, QL.HOTEN
+SELECT GV.HOTEN TENGV, QL.HOTEN TENQLCM
 FROM GIAOVIEN GV JOIN GIAOVIEN QL ON GV.GVQLCM = QL.MAGV
 
 --Q17. Cho các công việc bắt đầu trong khoảng từ 01/01/2007 đến 01/08/2007
@@ -86,7 +63,7 @@ WHERE CV.NGAYBD BETWEEN '01/01/2007' AND '08/01/2007'
 --Q18. Cho biết họ tên các giáo viên cùng bộ môn với giáo viên "Trần Trà Hương"
 SELECT GV.HOTEN
 FROM GIAOVIEN GV JOIN GIAOVIEN GV1 ON GV.MABM = GV1.MABM
-WHERE GV1.HOTEN = N'Trần Trà Hương' AND GV.HOTEN != N'Trần Trà Hương'
+WHERE GV1.HOTEN = N'Trần Trà Hương' AND GV.MAGV != GV1.MAGV
 
 --Q19. Tìm những giáo viên vừa là trưởng bộ môn vừa chủ nhiệm đề tài
 SELECT DISTINCT GV.*
