@@ -1,0 +1,31 @@
+USE QLDETAI
+GO
+
+-- 1. Tạo bảng thống kê bộ môn TKBm_LuongNN để thống kê các bộ môn có mức lương thấp nhất
+-- ở từng khoa. Bảng bao gồm các cột: Mã bộ môn, tên bộ môn, mã khoa và lương trung bình giáo viên trong bộ môn.
+-- FK: MaBM
+
+CREATE TABLE TKBM_LUONGNN
+(
+    MABM    CHAR(5),
+    TENBM   NVARCHAR(50),
+    MAKHOA  CHAR(5),
+    LUONGTB FLOAT,
+
+    CONSTRAINT PK_TKBM_LUONGNN 
+    PRIMARY KEY (MABM),
+)
+
+-- 2. Thêm dữ liệu vào bảng thống kê bộ môn TKBm_LuongNN
+INSERT INTO TKBM_LUONGNN
+SELECT BM.MABM, BM.TENBM, BM.MAKHOA, AVG(GV.LUONG) AS LUONGTB
+FROM GIAOVIEN GV JOIN BOMON BM ON GV.MABM=BM.MABM
+GROUP BY BM.MABM, BM.TENBM, BM.MAKHOA
+HAVING AVG(GV.LUONG) <= ALL(SELECT AVG(GV1.LUONG)
+FROM GIAOVIEN GV1 JOIN BOMON BM1 ON GV1.MABM=BM1.MABM
+GROUP BY BM1.MABM, BM1.MAKHOA
+HAVING BM1.MAKHOA = BM.MAKHOA
+)
+
+SELECT *
+FROM TKBM_LUONGNN
