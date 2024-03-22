@@ -1,42 +1,108 @@
 USE QLDETAI 
-GO 
+GO
 
 -- 1. Xuất mã và họ tên giáo viên có tham gia đề tài do trưởng bộ môn của họ là chủ nhiệm.
-
+SELECT DISTINCT GV.MAGV, GV.HOTEN
+FROM GIAOVIEN GV JOIN THAMGIADT TG ON GV.MAGV = TG.MAGV
+WHERE TG.MADT IN (SELECT DT.MADT
+FROM GIAOVIEN GV1 JOIN BOMON BM ON GV1.MAGV = BM.TRUONGBM
+    JOIN DETAI DT ON GV1.MAGV = DT.GVCNDT)
 
 -- 2. Xuất mã, họ tên, và tuổi của các giáo viên đã từng tham gia công việc thiết kế hoặc đã 
--- từng chủ nhiệm đề tài có công việc liên quan đến xác định yêu cầu. 
-
+-- từng chủ nhiệm đề tài có công việc liên quan đến xác định yêu cầu.
+    SELECT GV.MAGV, GV.HOTEN, DATEDIFF(YEAR, GV.NGSINH, GETDATE()) AS TUOI
+    FROM GIAOVIEN GV
+        JOIN THAMGIADT TG ON GV.MAGV = TG.MAGV
+        JOIN CONGVIEC CV ON (TG.MADT = CV.MADT AND TG.STT = CV.SOTT)
+    WHERE CV.TENCV LIKE N'THIẾT KẾ%'
+UNION
+    SELECT GV.MAGV, GV.HOTEN, DATEDIFF(YEAR, GV.NGSINH, GETDATE()) AS TUOI
+    FROM GIAOVIEN GV JOIN DETAI DT ON GV.MAGV = DT.GVCNDT
+        JOIN THAMGIADT TG ON GV.MAGV = TG.MAGV
+        JOIN CONGVIEC CV ON (TG.MADT = CV.MADT AND TG.STT = CV.SOTT)
+    WHERE CV.TENCV LIKE N'XÁC ĐỊNH YÊU CẦU%'
 
 -- 3. Xuất mã và họ tên các trưởng khoa có tham gia đề tài thuộc chủ đề “nghiên cứu” nhưng 
--- chưa từng tham gia đề tài nào thuộc chủ đề “ứng dụng”. 
-
+-- chưa từng tham gia đề tài nào thuộc chủ đề “ứng dụng”.
+    SELECT DISTINCT GV.MAGV, GV.HOTEN
+    FROM GIAOVIEN GV JOIN KHOA K ON GV.MAGV = K.TRUONGKHOA
+        JOIN THAMGIADT TG ON GV.MAGV = TG.MAGV
+        JOIN DETAI DT ON TG.MADT = DT.MADT
+        JOIN CHUDE CD ON DT.MACD = CD.MACD
+    WHERE CD.TENCD LIKE N'NGHIÊN CỨU%'
+EXCEPT
+    SELECT DISTINCT GV.MAGV, GV.HOTEN
+    FROM GIAOVIEN GV JOIN KHOA K ON GV.MAGV = K.TRUONGKHOA
+        JOIN THAMGIADT TG ON GV.MAGV = TG.MAGV
+        JOIN DETAI DT ON TG.MADT = DT.MADT
+        JOIN CHUDE CD ON DT.MACD = CD.MACD
+    WHERE CD.TENCD LIKE N'ỨNG DỤNG%'
 
 -- 4. Xuất mã, tên chủ đề, cấp quản lý (capql) và số lượng đề tài có kinh phí từ 100 triệu trở 
 -- lên theo từng cấp quản lý của mỗi chủ đề. 
-
+SELECT CD.MACD, CD.TENCD, DT.CAPQL, COUNT(DT.MADT) AS SOLUONG
+FROM DETAI DT JOIN CHUDE CD ON DT.MACD = CD.MACD
+WHERE DT.KINHPHI >= 100
+GROUP BY CD.MACD, CD.TENCD, DT.CAPQL
+ORDER BY DT.CAPQL
 
 -- 5. Xuất mã, họ tên giáo viên, họ tên quản lý chuyên môn của giáo viên (nếu không có 
 -- quản lý để ký hiệu “-”) của các giáo viên có tham gia đề tài được chủ nhiệm bởi giáo 
 -- viên khác bộ môn. 
-
+SELECT GV.MAGV, GV.HOTEN, ISNULL(GV1.HOTEN, N'-') AS HOTENQLCM
+FROM GIAOVIEN GV LEFT JOIN GIAOVIEN GV1 ON GV.GVQLCM = GV1.MAGV
+WHERE GV.MAGV IN (SELECT DISTINCT TG.MAGV
+FROM THAMGIADT TG JOIN DETAI DT ON TG.MADT = DT.MADT
+    JOIN GIAOVIEN GV2 ON DT.GVCNDT = GV2.MAGV
+WHERE GV.MABM != GV2.MABM)
 
 -- 6. Xuất mã, họ tên giáo viên và tổng số lượng giáo viên mà họ quản lý chuyên môn (nếu 
--- không quản lý ai, giá trị xuất ra là 0). 
-
+-- không quản lý ai, giá trị xuất ra là 0).
+SELECT GV.MAGV, GV.HOTEN, COUNT(GV1.MAGV) AS SOLUONG
+FROM GIAOVIEN GV LEFT JOIN GIAOVIEN GV1 ON GV.MAGV = GV1.GVQLCM
+GROUP BY GV.MAGV, GV.HOTEN
 
 -- 7. Xuất mã, họ tên giáo viên, tên khoa mà giáo viên thuộc về của các giáo viên từng chủ 
 -- nhiệm trên 2 đề tài có kinh phí >= 100 triệu. 
-
+SELECT GV.MAGV, GV.HOTEN, K.TENKHOA
+FROM GIAOVIEN GV JOIN BOMON BM ON GV.MABM = BM.MABM
+    JOIN KHOA K ON BM.MAKHOA = K.MAKHOA
+WHERE GV.MAGV IN (SELECT DISTINCT GV1.MAGV
+FROM GIAOVIEN GV1 JOIN DETAI DT ON GV1.MAGV = DT.GVCNDT
+WHERE DT.KINHPHI >= 100
+GROUP BY GV1.MAGV
+HAVING COUNT(DT.MADT) > 2)
 
 -- 8. Xuất mã, tên đề tài, tên và STT công việc có đông giáo viên tham gia nhất. 
-
+SELECT DT.MADT, DT.TENDT, CV.TENCV, CV.SOTT
+FROM DETAI DT JOIN THAMGIADT TG ON DT.MADT = TG.MADT
+    JOIN CONGVIEC CV ON (TG.MADT = CV.MADT AND TG.STT =CV.SOTT)
+GROUP BY DT.MADT, DT.TENDT, CV.TENCV, CV.SOTT
+HAVING COUNT(DISTINCT TG.MAGV) >= ALL (SELECT COUNT(DISTINCT TG1.MAGV)
+FROM THAMGIADT TG1
+GROUP BY TG1.MADT, TG1.STT)
 
 -- 9. Xuất mã và họ tên giáo viên có lương lớn nhất ở từng khoa theo các yêu cầu sau: 
--- • Cách 1: Có dùng lượng từ ALL hoặc hàm kết hợp MAX. 
-
+-- • Cách 1: Có dùng lượng từ ALL hoặc hàm kết hợp MAX.
+SELECT GV.MAGV, GV.HOTEN, K.MAKHOA
+FROM GIAOVIEN GV JOIN BOMON BM ON GV.MABM = BM.MABM
+    JOIN KHOA K ON BM.MAKHOA = K.MAKHOA
+GROUP BY GV.MAGV, GV.HOTEN, K.MAKHOA, GV.LUONG
+HAVING GV.LUONG >= ALL (SELECT GV1.LUONG
+FROM GIAOVIEN GV1 JOIN BOMON BM1 ON GV1.MABM = BM1.MABM
+    JOIN KHOA K1 ON BM1.MAKHOA = K1.MAKHOA
+WHERE K1.MAKHOA = K.MAKHOA
+GROUP BY K1.MAKHOA, GV1.LUONG)
 -- • Cách 2: Không dùng bất cứ lượng từ hay hàm kết hợp nào. 
-
+SELECT GV.MAGV, GV.HOTEN, K.MAKHOA
+FROM GIAOVIEN GV JOIN BOMON BM ON GV.MABM = BM.MABM
+    JOIN KHOA K ON BM.MAKHOA = K.MAKHOA
+GROUP BY GV.MAGV, GV.HOTEN, K.MAKHOA, GV.LUONG
+HAVING NOT EXISTS (SELECT GV1.LUONG
+FROM GIAOVIEN GV1 JOIN BOMON BM1 ON GV1.MABM = BM1.MABM
+    JOIN KHOA K1 ON BM1.MAKHOA = K1.MAKHOA
+WHERE K1.MAKHOA = K.MAKHOA AND GV1.LUONG > GV.LUONG
+GROUP BY K1.MAKHOA, GV1.LUONG)
 
 -- 10. Xuất mã và tên khoa có đông giáo viên từng chủ nhiệm đề tài nhất. 
 
