@@ -1,0 +1,163 @@
+USE MASTER
+GO
+IF DB_ID('QLDATPHONG') IS NOT NULL
+    DROP DATABASE QLDATPHONG
+GO
+
+--TẠO CSDL
+CREATE DATABASE QLDATPHONG
+GO
+
+USE QLDATPHONG
+GO
+
+CREATE TABLE PHONG
+(
+    MAPHONG CHAR(4),
+    TINHTRANG NVARCHAR(50),
+    LOAIPHONG NVARCHAR(50),
+    DONGIA INT,
+
+    CONSTRAINT PK_PHONG PRIMARY KEY(MAPHONG)
+)
+
+CREATE TABLE KHACH
+(
+    MAKH CHAR(4),
+    HOTEN NVARCHAR(50),
+    DIACHI NVARCHAR(50),
+    DIENTHOAI INT,
+
+    CONSTRAINT PK_KHACH PRIMARY KEY(MAKH)
+)
+
+CREATE TABLE DATPHONG
+(
+    MA INT,
+    MAKH CHAR(4),
+    MAPHONG CHAR(4),
+    NGAYDAT DATE,
+    NGAYTRA DATE,
+    THANHTIEN INT,
+
+    CONSTRAINT PK_DATPHONG PRIMARY KEY(MA),
+)
+
+ALTER TABLE DATPHONG
+ADD 
+    CONSTRAINT FK_DATPHONG_KHACH
+    FOREIGN KEY (MAKH)
+    REFERENCES KHACH(MAKH),
+
+    CONSTRAINT FK_DATPHONG_PHONG
+    FOREIGN KEY (MAPHONG)
+    REFERENCES PHONG(MAPHONG)
+
+INSERT PHONG
+VALUES 
+    ('P001',N'RẢNH', N'VVIP', 1000),
+    ('P002',N'BẬN', N'TIÊU CHUẨN', 500),
+    ('P003',N'RẢNH', N'VIP', 750),
+    ('P004',N'BẬN', N'TIÊU CHUẨN', 500),
+    ('P005',N'RẢNH', N'VIP', 750)
+
+INSERT KHACH
+VALUES 
+    ('K001', N'Nguyễn Hoài An',N'25/3 Lạc Long Quân, Q.10, TP HCM','0838126126'),
+    ('K002', N'Trần Trà Hương',N'125 Trần Hưng Đạo, Q.1, TP HCM','0838222222'),
+    ('K003', N'Nguyễn Ngọc Ánh', N'12/21 Võ Văn Ngân Thủ Đức, TP HCM','0372174556'),
+    ('K004', N'Trương Nam Sơn',N'215 Lý Thường Kiệt, TP Biên Hòa', '0225467891'),
+    ('K005', N'Lý Hoàng Hà', N'22/5 Nguyễn Xí, Q.Bình Thạnh, TP HCM', '0984564567')
+
+INSERT DATPHONG
+VALUES 
+    ('1', NULL, NULL, '2021-10-02', '2021-10-04', 1000),
+    ('2', NULL, NULL, '2021-10-04', '2021-10-06', 1000)
+
+UPDATE DATPHONG
+SET MAKH = 'K002' WHERE MA = '2'
+UPDATE DATPHONG
+SET MAPHONG = 'P002' WHERE MA = '2'
+UPDATE DATPHONG
+SET MAKH = 'K004' WHERE MA = '4'
+UPDATE DATPHONG
+SET MAPHONG = 'P004' WHERE MA = '4'
+
+SELECT * FROM PHONG
+SELECT * FROM KHACH
+SELECT * FROM DATPHONG
+
+GO
+-- Store procedure spDatPhong
+DROP PROCEDURE IF EXISTS DBO.SPDATPHONG
+GO
+CREATE PROCEDURE SPDATPHONG @MAKH CHAR(4), @MAPHONG CHAR(4), @NGAYDAT DATE
+AS
+    -- Kiểm tra mã khách hàng phải hợp lệ
+    IF (NOT EXISTS (SELECT * FROM KHACH WHERE MAKH = @MAKH))
+    BEGIN 
+        RAISERROR(N'Không tồn tại khách hàng',16,1)
+        RETURN
+    END
+    -- Kiểm tra mã phòng hợp lệ
+    IF (NOT EXISTS (SELECT * FROM PHONG WHERE MAPHONG = @MAPHONG))
+    BEGIN 
+        RAISERROR(N'Không tồn tại phòng',16,1)
+        RETURN
+    END
+    -- Kiểm tra phòng có rảnh hay không
+    IF NOT EXISTS (SELECT * FROM PHONG WHERE MAPHONG = @MAPHONG AND TINHTRANG = N'RẢNH')
+    BEGIN 
+        RAISERROR(N'Phòng không rảnh để đặt',16,1)
+        RETURN
+    END 
+
+    -- Phát sinh mã đặt phòng
+    DECLARE @MADATPHONG INT
+    SELECT @MADATPHONG = ISNULL(MAX(@MADATPHONG),0) + 1 FROM DATPHONG
+
+    -- Nếu các kiểm tra hợp lệ thì ghi nhận thông tin đặt phòng xuống CSDL (Ngày trả và thành tiền khi đặt phòng là NULL)
+    INSERT INTO DATPHONG
+    VALUES (@MADATPHONG, @MAKH, @MAPHONG, @NGAYDAT,NULL, NULL)
+
+    -- Sau khi đặt phòng thành công thì phải cập nhật tình trạng của phòng là "Bận"
+    UPDATE PHONG SET TINHTRANG = N'BẬN' WHERE MAPHONG = @MAPHONG
+
+EXEC DBO.SPDATPHONG 'K001', 'P001', '02-02-2022'
+
+GO
+-- Store procedure spTraPhong
+DROP PROCEDURE IF EXISTS DBO.SPDATPHONG
+GO
+CREATE PROCEDURE SPTRAPHONG @MADP CHAR(4), @MAKH CHAR(4)
+AS
+    -- Kiểm tra tính hợp lệ của mã đặt phòng, mã khách hàng: Hợp lệ nếu khách hàng có thực hiện việc đặt phòng
+    IF (NOT EXISTS (SELECT * FROM DATPHONG WHERE MA = @MADP AND MAKH = @MAKH))
+    BEGIN
+        RAISERROR(N'Không tồn tại thông tin đặt phòng',16,1)
+        RETURN
+    END
+
+    -- Ngày trả phòng chính là ngày hiện hành
+    UPDATE DATPHONG
+    SET NGAYTRA = GETDATE()
+    WHERE MA = @MADP AND MAKH = @MAKH
+
+    -- Tiền thanh toán được tính theo công thức: Tien = số ngày mượn x đơn giá phòng
+    DECLARE @SONGAY INT
+    SET @SONGAY = DATEDIFF(DAY, (SELECT NGAYDAT FROM DATPHONG WHERE MA = @MADP AND MAKH = @MAKH), GETDATE())
+
+    DECLARE @DONGIA INT
+    SET @DONGIA = (SELECT DONGIA FROM PHONG WHERE MAPHONG = (SELECT MAPHONG FROM DATPHONG WHERE MA = @MADP AND MAKH = @MAKH))
+
+    UPDATE DATPHONG
+    SET THANHTIEN = @SONGAY * @DONGIA
+    WHERE MA = @MADP AND MAKH = @MAKH
+
+    -- Phải thực hiện việc cập nhật tình trạng của phòng là "Rảnh" sau khi ghi nhận thông tin trả phòng
+    UPDATE PHONG
+    SET TINHTRANG = N'RẢNH'
+    WHERE MAPHONG = (SELECT MAPHONG FROM DATPHONG WHERE MA = @MADP AND MAKH = @MAKH)
+    PRINT N'Đã trả phòng thành công'
+
+EXEC DBO.SPTRAPHONG '001', 'K001'
